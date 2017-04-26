@@ -3,7 +3,7 @@
     "description": "Embed your data from database to your content in a flexible way",
     "type": "yii2-extension",
     "keywords": ["yii2 query template"],
-    "license": "MIT",
+    "license": "BSD-3-Clause",
     "authors": [
         {
             "name": "Van Quyet Tran",
