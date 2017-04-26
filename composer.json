@@ -10,6 +10,7 @@
             "email": "vanquyettran@hotmail.com"
         }
     ],
+    "minimum-stability": "stable",
     "require": {
         "yiisoft/yii2": "*"
     },
