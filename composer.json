@@ -10,7 +10,6 @@
             "email": "vanquyettran@hotmail.com"
         }
     ],
-    "minimum-stability": "stable",
     "require": {
         "yiisoft/yii2": "*"
     },
@@ -18,5 +17,11 @@
         "psr-4": {
             "vanquyet\\queryTemplate\\": ""
         }
-    }
+    },
+    "repositories":[
+        {
+            "type": "git",
+            "url": "https://github.com/vanquyettran/yii2-query-template.git"
+        }
+    ]
 }
