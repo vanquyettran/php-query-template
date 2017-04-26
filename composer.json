@@ -3,13 +3,14 @@
     "description": "Embed your data from database to your content in a flexible way",
     "type": "yii2-extension",
     "keywords": ["yii2 query template"],
-    "license": "BSD-3-Clause",
+    "license": "MIT",
     "authors": [
         {
             "name": "Van Quyet Tran",
             "email": "vanquyettran@hotmail.com"
         }
     ],
+    "minimum-stability": "stable",
     "require": {
         "yiisoft/yii2": "*"
     },
@@ -17,11 +18,5 @@
         "psr-4": {
             "vanquyet\\queryTemplate\\": ""
         }
-    },
-    "repositories":[
-        {
-            "type": "git",
-            "url": "https://github.com/vanquyettran/yii2-query-template.git"
-        }
-    ]
+    }
 }
