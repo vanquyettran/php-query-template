@@ -135,6 +135,11 @@ class QueryTemplate extends Widget
         return $text;
     }
 
+    /**
+     * @param $owner
+     * @param $input
+     * @return mixed
+     */
     protected function _findAndReplaceEmbeddedMethods($owner, $input)
     {
         if (is_array($input)) {
@@ -159,12 +164,21 @@ class QueryTemplate extends Widget
         return $input;
     }
 
+    /**
+     * @param $owner
+     * @param $embeddedMethod
+     * @return mixed
+     */
     protected function _embeddedMethodToText($owner, $embeddedMethod)
     {
         list($fnName, $fnArgs) = $this->_getFunctionNameAndArguments($embeddedMethod);
         return call_user_func_array([$owner, $fnName], $fnArgs);
     }
 
+    /**
+     * @param $str
+     * @return array
+     */
     protected function _getFunctionNameAndArguments($str)
     {
         $arg_open = '(';
