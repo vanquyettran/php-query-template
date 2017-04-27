@@ -8,8 +8,6 @@
 
 namespace vanquyet\queryTemplate;
 
-
-use yii\base\Exception;
 use yii\base\Widget;
 
 class QueryTemplate extends Widget
@@ -26,9 +24,9 @@ class QueryTemplate extends Widget
     public $content;
 
     /**
-     * @var array $functions
+     * @var array $queries
      */
-    public $funcList;
+    public $queries;
 
     /**
      * @inheritdoc
@@ -84,29 +82,16 @@ class QueryTemplate extends Widget
         $fns = explode('.', $inner);
 
         foreach ($fns as $i => $fn) {
-            $fnName = $fn;
-            $fnArgs = [];
-            preg_match_all("/\((.*?)\)/s", $fn, $args_matches);
-
-            $args_matches_length = count($args_matches[1]);
-            if ($args_matches_length > 0) {
-                $args = $args_matches[1][$args_matches_length - 1];
-                $fnName = trim(str_replace("($args)", '', $fnName));
-                $fnArgs = json_decode(
-                    "[$args]", // arguments array in json
-                    true // $assoc TRUE to cast {} => [] for all arguments
-                );
-            }
-
+            list($fnName, $fnArgs) = $this->_getFunctionNameAndArguments($fn);
             if ($i == 0) {
-                if (!isset($this->funcList[$fnName])) {
+                if (!isset($this->queries[$fnName])) {
                     $errors[] = $this->_functionDoesNotExistError($fnName);
                     break;
                 }
 
                 // Get object via static/first function
                 try {
-                    $func = $this->funcList[$fnName];
+                    $func = $this->queries[$fnName];
                     $object = $func(...$fnArgs);
                 } catch (\Exception $e) {
                     $errors[] = $e->getMessage();
@@ -125,9 +110,7 @@ class QueryTemplate extends Widget
 
                 // Execute method of this object
                 try {
-                    foreach ($fnArgs as &$arg) {
-//                        $arg = $this->_findAndReplaceEmbeddedMethods($object, $arg);
-                    }
+                    $fnArgs = $this->_findAndReplaceEmbeddedMethods($object, $fnArgs);
                     $object = call_user_func_array([$object, $fnName], $fnArgs);
                 } catch (\Exception $e) {
                     $errors[] = $e->getMessage();
@@ -137,7 +120,12 @@ class QueryTemplate extends Widget
         }
 
         // Output text
-        $text = is_string($object) ? $object : '';
+        try {
+            $text = (string) $object;
+        } catch (\Exception $e) {
+            $text = '';
+            $errors[] = $e->getMessage();
+        }
 
         // Throw errors message
         if (!empty($errors)) {
@@ -147,42 +135,59 @@ class QueryTemplate extends Widget
         return $text;
     }
 
-    protected function _findAndReplaceEmbeddedMethods($owner, $text)
+    protected function _findAndReplaceEmbeddedMethods($owner, $input)
     {
-        // Find all embedded methods
-        preg_match_all(
-            "/" . preg_quote(self::__EMBED_OPEN) . "(.*?)" . preg_quote(self::__EMBED_CLOSE) . "/s",
-            $text,
-            $embed_matches
-        );
+        if (is_array($input)) {
+            foreach ($input as &$item) {
+                $item = $this->_findAndReplaceEmbeddedMethods($owner, $item);
+            }
+        } else if (is_string($input)) {
+            // Find all embedded methods
+            preg_match_all(
+                "/" . preg_quote(self::__EMBED_OPEN) . "(.*?)" . preg_quote(self::__EMBED_CLOSE) . "/s",
+                $input,
+                $embed_matches
+            );
 
-        $newText = $text;
-
-        // Replace each template embed by computed text
-        foreach ($embed_matches[0] as $embeddedMethod) {
-            $embeddedText = $this->_embeddedMethodToText($owner, $embeddedMethod);
-            $newText = str_replace($embeddedMethod, $embeddedText, $newText);
+            // Replace each template embed by computed text
+            foreach ($embed_matches[1] as $embeddedMethod) {
+                $embeddedText = $this->_embeddedMethodToText($owner, $embeddedMethod);
+                $input = str_replace(self::__EMBED_OPEN . $embeddedMethod . self::__EMBED_CLOSE, $embeddedText, $input);
+            }
         }
 
-        return $newText;
+        return $input;
     }
 
     protected function _embeddedMethodToText($owner, $embeddedMethod)
     {
-        $fnName = $embeddedMethod;
-        $fnArgs = [];
-        preg_match_all("/\((.*?)\)/s", $fnName, $args_matches);
+        list($fnName, $fnArgs) = $this->_getFunctionNameAndArguments($embeddedMethod);
+        return call_user_func_array([$owner, $fnName], $fnArgs);
+    }
 
-        $args_matches_length = count($args_matches[1]);
-        if ($args_matches_length > 0) {
-            $args = $args_matches[1][$args_matches_length - 1];
-            $fnName = trim(str_replace("($args)", '', $fnName));
+    protected function _getFunctionNameAndArguments($str)
+    {
+        $arg_open = '(';
+        $arg_close = ')';
+
+        $fnName = $str;
+        $fnArgs = [];
+        preg_match_all(
+            '/' . preg_quote($arg_open) .  '(.*)' . preg_quote($arg_close) . '/s',
+            $fnName,
+            $args_matches
+        );
+
+        if (isset($args_matches[1][0])) {
+            $args = $args_matches[1][0];
+            $fnName = trim(str_replace($arg_open . $args . $arg_close, '', $fnName));
             $fnArgs = json_decode(
                 "[$args]", // arguments array in json
                 true // $assoc TRUE to cast {} => [] for all arguments
             );
         }
-        return call_user_func_array([$owner, $fnName], $fnArgs);
+
+        return [$fnName, $fnArgs];
     }
 
     /**
