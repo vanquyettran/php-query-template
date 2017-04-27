@@ -126,7 +126,7 @@ class QueryTemplate extends Widget
                 // Execute method of this object
                 try {
                     foreach ($fnArgs as &$arg) {
-                        $arg = $this->_findAndReplaceEmbeddedMethods($object, $arg);
+//                        $arg = $this->_findAndReplaceEmbeddedMethods($object, $arg);
                     }
                     $object = call_user_func_array([$object, $fnName], $fnArgs);
                 } catch (\Exception $e) {
@@ -169,7 +169,20 @@ class QueryTemplate extends Widget
 
     protected function _embeddedMethodToText($owner, $embeddedMethod)
     {
+        $fnName = $embeddedMethod;
+        $fnArgs = [];
+        preg_match_all("/\((.*?)\)/s", $fnName, $args_matches);
 
+        $args_matches_length = count($args_matches[1]);
+        if ($args_matches_length > 0) {
+            $args = $args_matches[1][$args_matches_length - 1];
+            $fnName = trim(str_replace("($args)", '', $fnName));
+            $fnArgs = json_decode(
+                "[$args]", // arguments array in json
+                true // $assoc TRUE to cast {} => [] for all arguments
+            );
+        }
+        return call_user_func_array([$owner, $fnName], $fnArgs);
     }
 
     /**
