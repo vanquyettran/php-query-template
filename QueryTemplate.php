@@ -345,7 +345,7 @@ class QueryTemplate extends Widget
     
     protected function _variableNameOrValueDoesNotProvided()
     {
-        return "Variable name or value does not provided.";
+        return "Variable name or value does not provided for assignment.";
     }
 
 }
