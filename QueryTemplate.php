@@ -81,15 +81,20 @@ class QueryTemplate extends Widget
             $block_matches
         );
 
-        $newContent = $this->content;
-
         // Replace each template block by computed text
-        foreach ($block_matches[0] as $block) {
-            $text = $this->_blockToText($block);
-            $newContent = str_replace($block, $text, $newContent);
+        foreach ($block_matches[1] as $block) {
+            $this->_tmpErrors = [];
+            $object = $this->_execFunctionAndObjectMethods($block);
+            // Output text (with errors message)
+            $text = $this->_objectToString($object) . $this->_getTmpErrorsMessage();
+            $this->content = str_replace(
+                self::__BLOCK_OPEN . $block . self::__BLOCK_CLOSE,
+                $text,
+                $this->content
+            );
         }
 
-        return $newContent;
+        return $this->content;
     }
 
     protected function _assignValueForVariables()
@@ -167,23 +172,6 @@ class QueryTemplate extends Widget
         }
 
         return $object;
-    }
-
-    /**
-     * @return string $text from template block
-     */
-    protected function _blockToText($block)
-    {
-        $this->_tmpErrors = [];
-
-        $fnStr = substr($block, strlen(self::__BLOCK_OPEN), - strlen(self::__BLOCK_CLOSE));
-
-        $object = $this->_execFunctionAndObjectMethods($fnStr);
-
-        // Output text (with errors message)
-        $text = $this->_objectToString($object) . $this->_getTmpErrorsMessage();
-
-        return $text;
     }
 
     protected function _objectToString($object)
