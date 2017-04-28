@@ -14,8 +14,14 @@ class QueryTemplate extends Widget
 {
     const __BLOCK_OPEN = '{{';
     const __BLOCK_CLOSE = '}}';
-    const __EMBED_OPEN = '[[';
-    const __EMBED_CLOSE = ']]';
+    const __ASSIGNMENT_OPEN = '[[';
+    const __ASSIGNMENT_CLOSE = ']]';
+    const __METHOD_OPEN = '<%';
+    const __METHOD_CLOSE = '%>';
+    const __VARIABLE_OPEN = '<?';
+    const __VARIABLE_CLOSE = '?>';
+    const __ASSIGNMENT_OPERATOR = ':';
+    const __OBJECT_OPERATOR = '~';
 
     /**
      * @var string $content to store input text content
@@ -24,9 +30,24 @@ class QueryTemplate extends Widget
     public $content;
 
     /**
-     * @var array $queries
+     * @var array $queries contains function list to get object
      */
     public $queries;
+
+    /**
+     * @var array $variables
+     */
+    public $variables;
+
+    /**
+     * @var array $errors
+     */
+    public $errors;
+
+    /**
+     * @var array $_tmpErrors
+     */
+    private $_tmpErrors;
 
     /**
      * @inheritdoc
@@ -44,6 +65,7 @@ class QueryTemplate extends Widget
     {
         parent::run();
 
+        $this->_assignValueForVariables();
         return $this->_findAndReplaceBlocks();
     }
 
@@ -70,22 +92,47 @@ class QueryTemplate extends Widget
         return $newContent;
     }
 
-    /**
-     * @return string $text from template block
-     */
-    protected function _blockToText($block)
+    protected function _assignValueForVariables()
     {
+        // Find all template blocks
+        preg_match_all(
+            "/" . preg_quote(self::__ASSIGNMENT_OPEN) . "(.*?)" . preg_quote(self::__ASSIGNMENT_CLOSE) . "/s",
+            $this->content,
+            $block_matches
+        );
+
+        // Replace each template block by computed text
+        foreach ($block_matches[1] as $block) {
+            $this->_tmpErrors = [];
+            $arr = explode(self::__ASSIGNMENT_OPERATOR, $block);
+            $arrLength = count($arr);
+            if ($arrLength < 2
+            || ($varName = trim(array_shift($arr))) == ''
+            || ($fnStr = trim(implode(self::__ASSIGNMENT_OPERATOR, $arr))) == ''
+            ) {
+                $this->_tmpErrors[] = $this->_variableNameOrValueDoesNotProvided();
+            } else {
+                $this->variables[$varName] = $this->_execFunctionAndObjectMethods($fnStr);
+            }
+
+            $this->content = str_replace(
+                self::__ASSIGNMENT_OPEN . $block . self::__ASSIGNMENT_CLOSE,
+                $this->_getTmpErrorsMessage(),
+                $this->content
+            );
+        }
+
+    }
+
+    protected function _execFunctionAndObjectMethods($str)
+    {
+        $fns = explode(self::__OBJECT_OPERATOR, $str);
         $object = null;
-        $errors = [];
-
-        $inner = substr($block, strlen(self::__BLOCK_OPEN), - strlen(self::__BLOCK_CLOSE));
-        $fns = explode('.', $inner);
-
         foreach ($fns as $i => $fn) {
             list($fnName, $fnArgs) = $this->_getFunctionNameAndArguments($fn);
             if ($i == 0) {
                 if (!isset($this->queries[$fnName])) {
-                    $errors[] = $this->_functionDoesNotExistError($fnName);
+                    $this->_tmpErrors[] = $this->_functionDoesNotExistError($fnName);
                     break;
                 }
 
@@ -94,17 +141,17 @@ class QueryTemplate extends Widget
                     $func = $this->queries[$fnName];
                     $object = $func(...$fnArgs);
                 } catch (\Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $this->_tmpErrors[] = $e->getMessage();
                     break;
                 }
             } else {
                 if (!is_object($object)) {
-                    $errors[] = $this->_cannotGetMethodOfNonObject($fnName);
+                    $this->_tmpErrors[] = $this->_cannotGetMethodOfNonObjectError($fnName);
                     break;
                 }
 
                 if (!method_exists($object, $fnName)) {
-                    $errors[] = $this->_methodDoesNotExistError(get_class($object), $fnName);
+                    $this->_tmpErrors[] = $this->_methodDoesNotExistError(get_class($object), $fnName);
                     break;
                 }
 
@@ -113,23 +160,40 @@ class QueryTemplate extends Widget
                     $fnArgs = $this->_findAndReplaceEmbeddedMethods($object, $fnArgs);
                     $object = call_user_func_array([$object, $fnName], $fnArgs);
                 } catch (\Exception $e) {
-                    $errors[] = $e->getMessage();
+                    $this->_tmpErrors[] = $e->getMessage();
                     break;
                 }
             }
         }
 
-        // Output text
+        return $object;
+    }
+
+    /**
+     * @return string $text from template block
+     */
+    protected function _blockToText($block)
+    {
+        $this->_tmpErrors = [];
+
+        $fnStr = substr($block, strlen(self::__BLOCK_OPEN), - strlen(self::__BLOCK_CLOSE));
+
+        $object = $this->_execFunctionAndObjectMethods($fnStr);
+
+        // Output text (with errors message)
+        $text = $this->_objectToString($object) . $this->_getTmpErrorsMessage();
+
+        return $text;
+    }
+
+    protected function _objectToString($object)
+    {
+        $text = '';
+
         try {
             $text = (string) $object;
         } catch (\Exception $e) {
-            $text = '';
-            $errors[] = $e->getMessage();
-        }
-
-        // Throw errors message
-        if (!empty($errors)) {
-            $text .= $this->_getErrorsMessage($errors);
+            $this->_tmpErrors[] = $e->getMessage();
         }
 
         return $text;
@@ -149,7 +213,7 @@ class QueryTemplate extends Widget
         } else if (is_string($input)) {
             // Find all embedded methods
             preg_match_all(
-                "/" . preg_quote(self::__EMBED_OPEN) . "(.*?)" . preg_quote(self::__EMBED_CLOSE) . "/s",
+                "/" . preg_quote(self::__METHOD_OPEN) . "(.*?)" . preg_quote(self::__METHOD_CLOSE) . "/s",
                 $input,
                 $embed_matches
             );
@@ -157,7 +221,7 @@ class QueryTemplate extends Widget
             // Replace each template embed by computed text
             foreach ($embed_matches[1] as $embeddedMethod) {
                 $embeddedText = $this->_embeddedMethodToText($owner, $embeddedMethod);
-                $input = str_replace(self::__EMBED_OPEN . $embeddedMethod . self::__EMBED_CLOSE, $embeddedText, $input);
+                $input = str_replace(self::__METHOD_OPEN . $embeddedMethod . self::__METHOD_CLOSE, $embeddedText, $input);
             }
         }
 
@@ -175,42 +239,80 @@ class QueryTemplate extends Widget
         return call_user_func_array([$owner, $fnName], $fnArgs);
     }
 
+    protected function _findAndReplaceEmbeddedVariables($input)
+    {
+        if (is_array($input)) {
+            foreach ($input as &$item) {
+                $item = $this->_findAndReplaceEmbeddedVariables($item);
+            }
+        } else if (is_string($input)) {
+            // Find all embedded methods
+            preg_match_all(
+                "/" . preg_quote(self::__VARIABLE_OPEN) . "(.*?)" . preg_quote(self::__VARIABLE_CLOSE) . "/s",
+                $input,
+                $embed_matches
+            );
+
+            // Replace each template embed by computed text
+            foreach ($embed_matches[1] as $embeddedMethod) {
+                try {
+                    $val = $this->variables[trim($embeddedMethod)];
+                } catch (\Exception $e) {
+                    $val = '';
+                    $this->_tmpErrors[] = $e->getMessage();
+                }
+                $embeddedText = $this->_objectToString($val);
+                $input = str_replace(self::__VARIABLE_OPEN . $embeddedMethod . self::__VARIABLE_CLOSE,
+                    $embeddedText, $input);
+            }
+        }
+
+        return $input;
+    }
+
+//    protected function _embeddedVariableToText()
+//    {
+//
+//    }
+
     /**
      * @param $str
      * @return array
      */
     protected function _getFunctionNameAndArguments($str)
     {
-        $arg_open = '(';
-        $arg_close = ')';
 
         $fnName = $str;
         $fnArgs = [];
         preg_match_all(
-            '/' . preg_quote($arg_open) .  '(.*)' . preg_quote($arg_close) . '/s',
+            "/\((.*)\)/s",
             $fnName,
             $args_matches
         );
 
         if (isset($args_matches[1][0])) {
             $args = $args_matches[1][0];
-            $fnName = trim(str_replace($arg_open . $args . $arg_close, '', $fnName));
+            $fnName = trim(str_replace("($args)", '', $fnName));
             $fnArgs = json_decode(
                 "[$args]", // arguments array in json
                 true // $assoc TRUE to cast {} => [] for all arguments
             );
         }
 
+        $fnArgs = $this->_findAndReplaceEmbeddedVariables($fnArgs);
+
         return [$fnName, $fnArgs];
     }
 
     /**
-     * @param $errors
      * @return string
      */
-    protected function _getErrorsMessage($errors)
+    protected function _getTmpErrorsMessage()
     {
-        return "\n<!-- " . count($errors) . " error(s):\n\t" . implode("\n\t", $errors) . "\n -->\n";
+        $errors_num = count($this->_tmpErrors);
+        return $errors_num == 0 ? '' :
+            "\n<!-- " . $errors_num . " error(s):\n\t"
+            . implode("\n\t", $this->_tmpErrors) . "\n -->\n";
     }
 
     /**
@@ -236,9 +338,14 @@ class QueryTemplate extends Widget
      * @param $fnName
      * @return string
      */
-    protected function _cannotGetMethodOfNonObject($fnName)
+    protected function _cannotGetMethodOfNonObjectError($fnName)
     {
         return "Cannot get method \"$fnName\" of non-object.";
+    }
+    
+    protected function _variableNameOrValueDoesNotProvided()
+    {
+        return "Variable name or value does not provided.";
     }
 
 }
