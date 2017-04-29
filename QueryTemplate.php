@@ -188,7 +188,8 @@ class QueryTemplate extends Widget
         // Get object via static/first function
         try {
             $func = $this->queries[$fnName];
-            $object = $func(...$fnArgs);
+//            $object = $func(...$fnArgs);
+            $object = call_user_func_array($func, $fnArgs);
         } catch (\Exception $e) {
             $this->_tmpErrors[] = $e->getMessage();
         }
