@@ -65,6 +65,12 @@ class QueryTemplate extends Widget
     public function init()
     {
         parent::init();
+
+        $this->queries = array_merge($this->queries, [
+            '$' => function ($varName) {
+                return $this->_getVariableValue($varName);
+            }
+        ]);
     }
 
     /**
