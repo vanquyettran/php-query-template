@@ -27,8 +27,8 @@ class QueryTemplate extends Widget
     const __EMBED_VAR_CLOSE = '$]';
 
     // (` my_name : getName(123) `)
-    // (` her_name : "Van Quyet" `)
-    // (` year : 2017 `)
+    // (` country : "Vietnam" `)
+    // (` year : 1993 `)
     const __ASSIGNMENT_OPEN = '(`';
     const __ASSIGNMENT_CLOSE = '`)';
     const __ASSIGNMENT_OPERATOR = ':';
@@ -41,7 +41,7 @@ class QueryTemplate extends Widget
     /**
      * @var string
      */
-    public $callTemplateMethod_FuncName = 'callTemplateMethod';
+    public $templateMethodCaller = 'callTemplateMethod';
 
     /**
      * @var string $content to store input text content
@@ -105,11 +105,6 @@ class QueryTemplate extends Widget
     protected function findAndReplaceBlocks()
     {
         // Find all template blocks
-//        preg_match_all(
-//            "/" . preg_quote(self::__FUNC_OPEN, '/') . "(.*?)" . preg_quote(self::__FUNC_CLOSE, '/') . "/s",
-//            $this->content,
-//            $block_matches
-//        );
         $block_matches = $this->findGroups(self::__FUNC_OPEN, self::__FUNC_CLOSE, $this->content);
 
         // Replace each template block by computed text
@@ -134,11 +129,6 @@ class QueryTemplate extends Widget
     protected function findAndEchoVariables()
     {
         // Find all template blocks
-//        preg_match_all(
-//            "/" . preg_quote(self::__VAR_OPEN, '/') . "(.*?)" . preg_quote(self::__VAR_CLOSE, '/') . "/s",
-//            $this->content,
-//            $block_matches
-//        );
         $block_matches = $this->findGroups(self::__VAR_OPEN, self::__VAR_CLOSE, $this->content);
 
         // Replace each template block by computed text
@@ -163,14 +153,6 @@ class QueryTemplate extends Widget
     protected function assignValueForVariables()
     {
         // Find all template blocks
-//        $open = preg_quote(self::__ASSIGNMENT_OPEN, '/');
-//        $close = preg_quote(self::__ASSIGNMENT_OPEN, '/');
-//        preg_match_all(
-////            "/" . preg_quote(self::__ASSIGNMENT_OPEN, '/') . "(.*?)" . preg_quote(self::__ASSIGNMENT_CLOSE, '/') . "/s",
-//            "/$open{%((?:(?!$open)(?!$close)[\s\S])*)%}$close/",
-//            $this->content,
-//            $block_matches
-//        );
         $block_matches = $this->findGroups(self::__ASSIGNMENT_OPEN, self::__ASSIGNMENT_CLOSE, $this->content);
 
         // Replace each template block by computed text
@@ -230,12 +212,13 @@ class QueryTemplate extends Widget
         list($fnName, $fnArgs) = $this->getFunctionNameAndArguments($fn);
 
         if (!is_object($object)) {
-            $this->_tmpErrors[] = $this->_cannotGetMethodOfNonObjectError($fnName);
+            $this->_tmpErrors[] = $this->cannotGetMethodOfNonObjectError($fnName);
             return $newObject;
         }
 
-        if (!method_exists($object, $this->callTemplateMethod_FuncName)) {
-            $this->_tmpErrors[] = $this->_methodDoesNotExistError(get_class($object), $this->callTemplateMethod_FuncName);
+        if (!method_exists($object, $this->templateMethodCaller)) {
+            $this->_tmpErrors[] = $this->methodDoesNotExistError(
+                get_class($object), $this->templateMethodCaller);
             return $newObject;
         }
 
@@ -244,7 +227,7 @@ class QueryTemplate extends Widget
         // Execute method of this object
         try {
             $fnArgs = $this->findAndReplaceEmbeddedMethods($object, $fnArgs);
-            $newObject = call_user_func_array([$object, $this->callTemplateMethod_FuncName], [$fnName, $fnArgs]);
+            $newObject = call_user_func_array([$object, $this->templateMethodCaller], [$fnName, $fnArgs]);
         } catch (\Exception $e) {
             $this->_tmpErrors[] = $e->getMessage();
         }
@@ -325,14 +308,6 @@ class QueryTemplate extends Widget
             }
         } else if (is_string($input)) {
             // Find all embedded methods
-//            $open = preg_quote(self::__EMBED_FUNC_OPEN, '/');
-//            $close = preg_quote(self::__EMBED_FUNC_CLOSE, '/');
-//            preg_match_all(
-////                "/" . preg_quote(self::__EMBED_FUNC_OPEN, '/') . "(.*?)" . preg_quote(self::__EMBED_FUNC_CLOSE, '/') . "/s",
-//                "/$open{%((?:(?!$open)(?!$close)[\s\S])*)%}$close/",
-//                $input,
-//                $embed_matches
-//            );
             $embed_matches = $this->findGroups(self::__EMBED_FUNC_OPEN, self::__EMBED_FUNC_CLOSE, $input);
 
             // Replace each template embed by computed text
@@ -353,14 +328,6 @@ class QueryTemplate extends Widget
             }
         } else if (is_string($input)) {
             // Find all embedded methods
-//            $open = preg_quote(self::__EMBED_VAR_OPEN, '/');
-//            $close = preg_quote(self::__EMBED_VAR_CLOSE, '/');
-//            preg_match_all(
-////                "/" . preg_quote(self::__EMBED_VAR_OPEN, '/') . "(.*?)" . preg_quote(self::__EMBED_VAR_CLOSE, '/') . "/s",
-//                "/$open{%((?:(?!$open)(?!$close)[\s\S])*)%}$close/",
-//                $input,
-//                $embed_matches
-//            );
             $embed_matches = $this->findGroups(self::__EMBED_VAR_OPEN, self::__EMBED_VAR_CLOSE, $input);
 
             // Replace each template embed by computed text
