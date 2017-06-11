@@ -12,22 +12,22 @@ use yii\base\Widget;
 
 class QueryTemplate extends Widget
 {
-    const __FUNC_OPEN = '{%';
-    const __FUNC_CLOSE = '%}';
-    const __EMBED_FUNC_OPEN = '<%';
-    const __EMBED_FUNC_CLOSE = '%>';
+    const __FUNC_OPEN = '<tmpl:func>';
+    const __FUNC_CLOSE = '</tmpl:func>';
+    const __EMBED_FUNC_OPEN = '<tmpl:embFunc>';
+    const __EMBED_FUNC_CLOSE = '</tmpl:embFunc>';
 
-    const __VAR_OPEN = '{@';
-    const __VAR_CLOSE = '@}';
-    const __EMBED_VAR_OPEN = '<@';
-    const __EMBED_VAR_CLOSE = '@>';
+    const __VAR_OPEN = '<tmpl:var>';
+    const __VAR_CLOSE = '</tmpl:var>';
+    const __EMBED_VAR_OPEN = '<tmpl:embVar>';
+    const __EMBED_VAR_CLOSE = '</tmpl:embVar>';
 
-    const __ASSIGNMENT_OPEN = '[@';
-    const __ASSIGNMENT_CLOSE = '@]';
-    const __ASSIGNMENT_OPERATOR = ':';
+    const __ASSIGNMENT_OPEN = '<tmpl:assign>';
+    const __ASSIGNMENT_CLOSE = '</tmpl:assign>';
+    const __ASSIGNMENT_OPERATOR = '|';
 
-    const __OBJECT_OPERATOR = '->';
-    const __EMBED_OBJECT_OPERATOR = '=>';
+    const __OBJECT_OPERATOR = '.#';
+    const __EMBED_OBJECT_OPERATOR = '.@';
 
     /**
      * @var string
@@ -49,15 +49,16 @@ class QueryTemplate extends Widget
      */
     public $variables;
 
-//    /**
-//     * @var array $errors
-//     */
-//    public $errors;
-
     /**
      * @var array $_tmpErrors
      */
     private $_tmpErrors;
+
+    /**
+     * @var array $errors
+     */
+    public static $errors;
+
 
     /**
      * @inheritdoc
@@ -65,6 +66,8 @@ class QueryTemplate extends Widget
     public function init()
     {
         parent::init();
+
+        self::$errors = [];
 
         $this->queries = array_merge($this->queries, [
             '$' => function ($varName) {
@@ -94,7 +97,7 @@ class QueryTemplate extends Widget
     {
         // Find all template blocks
         preg_match_all(
-            "/" . preg_quote(self::__FUNC_OPEN) . "(.*?)" . preg_quote(self::__FUNC_CLOSE) . "/s",
+            "/" . preg_quote(self::__FUNC_OPEN, '/') . "(.*?)" . preg_quote(self::__FUNC_CLOSE, '/') . "/s",
             $this->content,
             $block_matches
         );
@@ -110,6 +113,9 @@ class QueryTemplate extends Widget
                 $text,
                 $this->content
             );
+            if (!empty($this->_tmpErrors)) {
+                self::$errors[] = $this->_tmpErrors;
+            }
         }
 
         return $this->content;
@@ -119,7 +125,7 @@ class QueryTemplate extends Widget
     {
         // Find all template blocks
         preg_match_all(
-            "/" . preg_quote(self::__VAR_OPEN) . "(.*?)" . preg_quote(self::__VAR_CLOSE) . "/s",
+            "/" . preg_quote(self::__VAR_OPEN, '/') . "(.*?)" . preg_quote(self::__VAR_CLOSE, '/') . "/s",
             $this->content,
             $block_matches
         );
@@ -135,6 +141,9 @@ class QueryTemplate extends Widget
                 $text,
                 $this->content
             );
+            if (!empty($this->_tmpErrors)) {
+                self::$errors[] = $this->_tmpErrors;
+            }
         }
 
         return $this->content;
@@ -144,7 +153,7 @@ class QueryTemplate extends Widget
     {
         // Find all template blocks
         preg_match_all(
-            "/" . preg_quote(self::__ASSIGNMENT_OPEN) . "(.*?)" . preg_quote(self::__ASSIGNMENT_CLOSE) . "/s",
+            "/" . preg_quote(self::__ASSIGNMENT_OPEN, '/') . "(.*?)" . preg_quote(self::__ASSIGNMENT_CLOSE, '/') . "/s",
             $this->content,
             $block_matches
         );
@@ -155,8 +164,8 @@ class QueryTemplate extends Widget
             $arr = explode(self::__ASSIGNMENT_OPERATOR, $block);
             $arrLength = count($arr);
             if ($arrLength < 2
-            || ($varName = trim(array_shift($arr))) == ''
-            || ($input = trim(implode(self::__ASSIGNMENT_OPERATOR, $arr))) == ''
+                || ($varName = trim(array_shift($arr))) == ''
+                || ($input = trim(implode(self::__ASSIGNMENT_OPERATOR, $arr))) == ''
             ) {
                 $this->_tmpErrors[] = $this->_variableNameOrValueDoesNotProvided();
             } else {
@@ -172,6 +181,9 @@ class QueryTemplate extends Widget
                 $this->_getTmpErrorsMessage(),
                 $this->content
             );
+            if (!empty($this->_tmpErrors)) {
+                self::$errors[] = $this->_tmpErrors;
+            }
         }
 
     }
@@ -299,7 +311,7 @@ class QueryTemplate extends Widget
         } else if (is_string($input)) {
             // Find all embedded methods
             preg_match_all(
-                "/" . preg_quote(self::__EMBED_FUNC_OPEN) . "(.*?)" . preg_quote(self::__EMBED_FUNC_CLOSE) . "/s",
+                "/" . preg_quote(self::__EMBED_FUNC_OPEN, '/') . "(.*?)" . preg_quote(self::__EMBED_FUNC_CLOSE, '/') . "/s",
                 $input,
                 $embed_matches
             );
@@ -323,7 +335,7 @@ class QueryTemplate extends Widget
         } else if (is_string($input)) {
             // Find all embedded methods
             preg_match_all(
-                "/" . preg_quote(self::__EMBED_VAR_OPEN) . "(.*?)" . preg_quote(self::__EMBED_VAR_CLOSE) . "/s",
+                "/" . preg_quote(self::__EMBED_VAR_OPEN, '/') . "(.*?)" . preg_quote(self::__EMBED_VAR_CLOSE, '/') . "/s",
                 $input,
                 $embed_matches
             );
@@ -425,7 +437,7 @@ class QueryTemplate extends Widget
     {
         return "Cannot get method \"$fnName\" of non-object.";
     }
-    
+
     protected function _variableNameOrValueDoesNotProvided()
     {
         return "Variable name or value does not provided for assignment.";
