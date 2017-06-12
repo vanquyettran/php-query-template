@@ -12,31 +12,31 @@ use yii\base\Widget;
 
 class QueryTemplate extends Widget
 {
-    // {% getName(123) %}
-    const __FUNC_OPEN = '{%';
-    const __FUNC_CLOSE = '%}';
-    // " My name is [% getName(123) %] "
-    const __EMBED_FUNC_OPEN = '[%';
-    const __EMBED_FUNC_CLOSE = '%]';
+    // {{% getName(123) %}}
+    const __FUNC_OPEN = '{{%';
+    const __FUNC_CLOSE = '%}}';
+    // " My name is [[% getName(123) %]] "
+    const __EMBEDDED_FUNC_OPEN = '[[%';
+    const __EMBEDDED_FUNC_CLOSE = '%]]';
 
-    // {$ my_name $}
-    const __VAR_OPEN = '{$';
-    const __VAR_CLOSE = '$}';
-    // " My name is [$ my_name $] "
-    const __EMBED_VAR_OPEN = '[$';
-    const __EMBED_VAR_CLOSE = '$]';
+    // {{* my_name *}}
+    const __VAR_OPEN = '{{*';
+    const __VAR_CLOSE = '*}}';
+    // " My name is [[* my_name *]] "
+    const __EMBEDDED_VAR_OPEN = '[[*';
+    const __EMBEDDED_VAR_CLOSE = '*]]';
 
-    // (` my_name : getName(123) `)
-    // (` country : "Vietnam" `)
-    // (` year : 1993 `)
-    const __ASSIGNMENT_OPEN = '(`';
-    const __ASSIGNMENT_CLOSE = '`)';
+    // ((` my_name : getName(123) `))
+    // ((` country : "Vietnam" `))
+    // ((` year : 1993 `))
+    const __ASSIGNMENT_OPEN = '((`';
+    const __ASSIGNMENT_CLOSE = '`))';
     const __ASSIGNMENT_OPERATOR = ':';
 
-    // {% findStudent(123).#getInfo("name") %}
+    // {{% findStudent(123).#getInfo("name") %}}
     const __OBJECT_OPERATOR = '.#';
-    // " [% findStudent(123).@getInfo("name") %] "
-    const __EMBED_OBJECT_OPERATOR = '.@';
+    // " [[% findStudent(123).@getInfo("name") %]] "
+    const __EMBEDDED_OBJECT_OPERATOR = '.@';
 
     /**
      * @var string
@@ -261,7 +261,7 @@ class QueryTemplate extends Widget
      */
     protected function embeddedMethodToText($owner, $str)
     {
-        $fns = explode(self::__EMBED_OBJECT_OPERATOR, $str);
+        $fns = explode(self::__EMBEDDED_OBJECT_OPERATOR, $str);
         $object = null;
         foreach ($fns as $i => $fn) {
             $errNum0 = count($this->_tmpErrors);
@@ -308,12 +308,12 @@ class QueryTemplate extends Widget
             }
         } else if (is_string($input)) {
             // Find all embedded methods
-            $embed_matches = $this->findGroups(self::__EMBED_FUNC_OPEN, self::__EMBED_FUNC_CLOSE, $input);
+            $embed_matches = $this->findGroups(self::__EMBEDDED_FUNC_OPEN, self::__EMBEDDED_FUNC_CLOSE, $input);
 
             // Replace each template embed by computed text
             foreach ($embed_matches[1] as $embeddedMethod) {
                 $embeddedText = $this->embeddedMethodToText($owner, $embeddedMethod);
-                $input = str_replace(self::__EMBED_FUNC_OPEN . $embeddedMethod . self::__EMBED_FUNC_CLOSE, $embeddedText, $input);
+                $input = str_replace(self::__EMBEDDED_FUNC_OPEN . $embeddedMethod . self::__EMBEDDED_FUNC_CLOSE, $embeddedText, $input);
             }
         }
 
@@ -328,13 +328,13 @@ class QueryTemplate extends Widget
             }
         } else if (is_string($input)) {
             // Find all embedded methods
-            $embed_matches = $this->findGroups(self::__EMBED_VAR_OPEN, self::__EMBED_VAR_CLOSE, $input);
+            $embed_matches = $this->findGroups(self::__EMBEDDED_VAR_OPEN, self::__EMBEDDED_VAR_CLOSE, $input);
 
             // Replace each template embed by computed text
             foreach ($embed_matches[1] as $embeddedMethod) {
                 $embeddedText = $this->objectToString($this->getVariableValue($embeddedMethod));
                 $input = str_replace(
-                    self::__EMBED_VAR_OPEN . $embeddedMethod . self::__EMBED_VAR_CLOSE,
+                    self::__EMBEDDED_VAR_OPEN . $embeddedMethod . self::__EMBEDDED_VAR_CLOSE,
                     $embeddedText,
                     $input
                 );
