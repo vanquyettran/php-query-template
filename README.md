@@ -32,19 +32,19 @@ Once the extension is installed, simply use it in your code by  :
 {{% getName(123) %}}
 
 <!-- Embed function in the string -->
-" My name is [[% getName(123) %]] "
+"My name is [[% getName(123) %]] "
 
 <!-- Write variable -->
 {{* my_name *}}
 
 <!-- Embed variable in the string -->
-" My name is [[* my_name *]] "
+"My name is [[* my_name *]] "
 
 <!-- Object method -->
 {{% findStudent(123).#getInfo("name") %}}
 
 <!-- Object method embedded in the string -->
-" Student name: [[% findStudent(123).@getInfo("name") %]] "
+"Student name: [[% findStudent(123).@getInfo("name") %]] "
 
 <!-- Variable assignment -->
 ((` my_name : getName(123) `))
