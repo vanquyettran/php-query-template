@@ -28,7 +28,7 @@ Usage
 Once the extension is installed, simply use it in your code by  :
 
 ```html
-<!-- Execute function and write result -->
+<!-- Execute function and write the result as a string -->
 {{% getName(123) %}}
 
 <!-- Embed function in the string -->
