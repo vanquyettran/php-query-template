@@ -29,10 +29,10 @@ Once the extension is installed, simply use it in your code by  :
 
 ```html
 <!-- Execute function and write the result as a string -->
-{{% getName(123) %}}
+{{% getStudentName(123) %}}
 
 <!-- Embed function in the string -->
-"My name is [[% getName(123) %]] "
+"My name is [[% getStudentName(123) %]] "
 
 <!-- Write variable -->
 {{* my_name *}}
@@ -47,7 +47,7 @@ Once the extension is installed, simply use it in your code by  :
 "Student name: [[% findStudent(123).@getInfo("name") %]] "
 
 <!-- Variable assignment -->
-((` my_name : getName(123) `))
+((` my_name : getStudentName(123) `))
 ((` country : "Vietnam" `))
 ((` year : 1993 `))
 ```
