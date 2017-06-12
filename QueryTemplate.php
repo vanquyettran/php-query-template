@@ -35,7 +35,7 @@ class QueryTemplate extends Widget
 
     // {{% findStudent(123).#getInfo("name") %}}
     const __OBJECT_OPERATOR = '.#';
-    // " [[% findStudent(123).@getInfo("name") %]] "
+    // " [[% findStudent(123).@getInfo(\"name\") %]] "
     const __EMBEDDED_OBJECT_OPERATOR = '.@';
 
     /**
