@@ -44,7 +44,8 @@ Once the extension is installed, simply use it in your code by  :
 {{% findStudent(123).#getInfo("name") %}}
 
 <!-- Object method embedded in the string -->
-"Student name: [[% findStudent(123).@getInfo("name") %]] "
+"Student name: [[% findStudent(123).@getInfo(\"name\") %]] "
+{{% findStudent(123).#getImg({"alt": "Student name: [[% this.@getInfo(\"name\") %]]"}) %}}
 
 <!-- Variable assignment -->
 ((` my_name : getStudentName(123) `))
