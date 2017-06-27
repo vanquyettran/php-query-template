@@ -68,6 +68,10 @@ class QueryTemplate extends Widget
      */
     public static $errors;
 
+    /**
+     * @var bool
+     */
+    public $enableDebugMode = false;
 
     /**
      * @inheritdoc
@@ -112,7 +116,10 @@ class QueryTemplate extends Widget
             $this->_tmpErrors = [];
             $object = $this->execFunctionAndObjectMethods($block);
             // Output text (with errors message)
-            $text = $this->objectToString($object) . $this->getTmpErrorsMessage();
+            $text = $this->objectToString($object);
+            if ($this->enableDebugMode) {
+                $text .= $this->getTmpErrorsMessage();
+            }
             $this->content = str_replace(
                 self::__FUNC_OPEN . $block . self::__FUNC_CLOSE,
                 $text,
@@ -136,7 +143,10 @@ class QueryTemplate extends Widget
             $this->_tmpErrors = [];
             $object = $this->getVariableValue($block);
             // Output text (with errors message)
-            $text = $this->objectToString($object) . $this->getTmpErrorsMessage();
+            $text = $this->objectToString($object);
+            if ($this->enableDebugMode) {
+                $text .= $this->getTmpErrorsMessage();
+            }
             $this->content = str_replace(
                 self::__VAR_OPEN . $block . self::__VAR_CLOSE,
                 $text,
@@ -173,9 +183,13 @@ class QueryTemplate extends Widget
                 $this->variables[$varName] = $value;
             }
 
+            $text = '';
+            if ($this->enableDebugMode) {
+                $text .= $this->getTmpErrorsMessage();
+            }
             $this->content = str_replace(
                 self::__ASSIGNMENT_OPEN . $block . self::__ASSIGNMENT_CLOSE,
-                $this->getTmpErrorsMessage(),
+                $text,
                 $this->content
             );
             if (!empty($this->_tmpErrors)) {
@@ -284,15 +298,13 @@ class QueryTemplate extends Widget
 
     protected function objectToString($object)
     {
-        $text = '';
-
         try {
             $text = (string) $object;
         } catch (\Exception $e) {
             $this->_tmpErrors[] = $e->getMessage();
         }
 
-        return $text;
+        return isset($text) ? $text : '';
     }
 
     /**
